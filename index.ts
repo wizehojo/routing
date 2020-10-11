@@ -14,53 +14,44 @@ type TPathDifinition =
 
 
 // ###### type guard
-const isString = (args: any[]): args is string[] => {
-  return args.every((arg) => typeof arg === 'string');
-}
-const isPathDifinitionObject = (args: any[]): args is TPathDifinitionObject[] => {
-  return args.every((arg) => typeof arg === 'object' && arg.hasOwnProperty('type') && arg.hasOwnProperty('path'));
-}
-const isRegExp = (args: any[]): args is RegExp[] => {
-  return args.every((arg) => arg instanceof RegExp);
+const isPathDifinitionObject = (arg: any): arg is TPathDifinitionObject => {
+  return typeof arg === 'object' && arg.hasOwnProperty('type') && arg.hasOwnProperty('path');
 }
 
 // ###### function
 
-/** 配列に変換 */
-const toArray = (data: string | RegExp | TPathDifinitionObject | Array<string | RegExp | TPathDifinitionObject>): Array<string | RegExp | TPathDifinitionObject> => Array.isArray(data) ? data : [data];
+const str2regexp = (str: string) => pathToRegexp(str);
+const toArray = (data: TPathDifinition): Array<string | RegExp | TPathDifinitionObject> => Array.isArray(data) ? data : [data];
+const toRegExpArr = (data: TExpressPathDifinition): RegExp[] => {
+  const array = Array.isArray(data) ? data : [data];
+  return array.map((arr) => (typeof arr === 'string' ? str2regexp(arr) : arr ));
+}
 
-/** 引数のstring[]にpathが含まれていればtrue */
-const matchWithStr = (strArr: string[], path: string) => strArr.some((str) => {
-  const regexp = pathToRegexp(str);
-  return regexp.exec(path) !== null;
-});
+/** TPathDifinitionObject[]に変換。さらにPathDifinitionObjectのpathをRegExp[]に揃える */
+const toPathDifinitionObject = (data: Array<string | RegExp | TPathDifinitionObject>): { type: TPathType, path: RegExp[]}[] => {
+  return data.map((dt) => {
+    if (isPathDifinitionObject(dt)) {
+      return ({ type: dt.type, path: toRegExpArr(dt.path)})
+    } else {
+      return ({ type: 'include', path: toRegExpArr(dt)});
+    }
+  })
+}
+
 /** 引数のregexp[]にpathが含まれていればtrue */
 const matchWithRegexp = (RegexpArr: RegExp[], path: string) => RegexpArr.some(((regexp) => regexp.exec(path) !== null));
-/** 引数のpathDifinitionObjectのpathと第二引数のpathが一致すればtrue. (typeがexcludeの場合は一致すればfalse) */
-const matchWithPathDifinitionObject = (pathDifinitionObject: TPathDifinitionObject, path: string): boolean => {
-  const { type } = pathDifinitionObject;
-  const pathDifinitionArr = toArray(pathDifinitionObject.path);
-  const isMatch = _isMatch(pathDifinitionArr, path);
-  // excludeならmatchしていた場合falseを返す。
-  return type === 'exclude' ? !isMatch : isMatch;
-}
 
-const _isMatch = (arr: Array<string | RegExp | TPathDifinitionObject>, path: string) => {
-  if (isString(arr)) {
-    return matchWithStr(arr, path);
-  }
-  if (isRegExp(arr)) {
-    return matchWithRegexp(arr, path);
-  }
+/** 引数のpathDifinitionのpath(RegExp[])に第二引数のpathが含まれていればtrue. (pathDifinitionのtypeがexcludeの場合は含まれていればfalse) */
+const _isMatch = (pathDifinitionObjectArr: ReturnType<typeof toPathDifinitionObject>, path: string) => {
+  return pathDifinitionObjectArr.some((pathDifinition) => {
+    return pathDifinition.type === 'exclude' ? !matchWithRegexp(pathDifinition.path, path) : matchWithRegexp(pathDifinition.path, path)
+  });
 }
-
 
 const isMatch = (pathDifinition: TPathDifinition, path: string) => {
   const pathDifinitionArr = toArray(pathDifinition);
-  if (isPathDifinitionObject(pathDifinitionArr)) {
-    return pathDifinitionArr.every((pathDifinition) => matchWithPathDifinitionObject(pathDifinition, path));
-  }
-  return _isMatch(pathDifinitionArr, path);
+  const pathDifinitionObjectArr = toPathDifinitionObject(pathDifinitionArr);
+  return _isMatch(pathDifinitionObjectArr, path);
 }
 
 

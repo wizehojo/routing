@@ -38,15 +38,12 @@ const str2regexp = (str: string | RegExp) => typeof str === 'string' ? pathToReg
 const expressPathDifinition2RegExpArr = (expressPathDifinition: TExpressPathDifinition): RegExp[] =>
   (Array.isArray(expressPathDifinition) ? expressPathDifinition : [expressPathDifinition]).map(str2regexp);
 
-const toConvertedPathDifinitionObjects = (pathDifinition: TPathDifinition): TConvertedPathDifinitionObject[] => {
-  if (isExpressPathDifinition(pathDifinition)) {
-    return [{ type: 'include', path: expressPathDifinition2RegExpArr(pathDifinition)}];
-  } else {
-    return (Array.isArray(pathDifinition) ? pathDifinition : [pathDifinition]).map((v) =>
-      ({ ...v, path: expressPathDifinition2RegExpArr(v.path)})
-    );
-  }
-};
+const toConvertedPathDifinitionObjects = (pathDifinition: TPathDifinition): TConvertedPathDifinitionObject[] =>
+  (isExpressPathDifinition(pathDifinition))
+    ? [{ type: 'include', path: expressPathDifinition2RegExpArr(pathDifinition)}]
+    : (Array.isArray(pathDifinition) ? pathDifinition : [pathDifinition]).map((v) =>
+        ({ ...v, path: expressPathDifinition2RegExpArr(v.path)})
+      );
 
 
 

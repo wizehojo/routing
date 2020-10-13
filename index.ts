@@ -1,42 +1,42 @@
 import { pathToRegexp } from 'path-to-regexp';
 
+
 // ###### type
 type TExpressPathDifinition = string | RegExp | Array<string | RegExp>;
+
 type TPathType = 'include' | 'exclude'
+
 type TPathDifinitionObject = {
   type: TPathType;
   path: TExpressPathDifinition;
 }
-type TPathDifinition =
-  | TExpressPathDifinition
-  | TPathDifinitionObject
-  | Array<TPathDifinitionObject>
-
 
 type TConvertedPathDifinitionObject = {
   type: TPathType;
   path: RegExp[];
 };
 
+export type TPathDifinition =
+  | TExpressPathDifinition
+  | TPathDifinitionObject
+  | Array<TPathDifinitionObject>;
+
+
+
 // ###### type guard
+
 const isStringOrRegExp = (x: unknown): x is string | RegExp => typeof x === 'string' || x instanceof RegExp;
+
 const isExpressPathDifinition = (x: unknown): x is TExpressPathDifinition => !Array.isArray(x) ? isStringOrRegExp(x) : x.every(isStringOrRegExp);
 
 
-// ###### function
+
+// ##### convert TPathDifinition to TConvertedPathDifinitionObject[]
 
 const str2regexp = (str: string | RegExp) => typeof str === 'string' ? pathToRegexp(str) : str;
 
 const expressPathDifinition2RegExpArr = (expressPathDifinition: TExpressPathDifinition): RegExp[] =>
   (Array.isArray(expressPathDifinition) ? expressPathDifinition : [expressPathDifinition]).map(str2regexp);
-
-
-const matchWithRegexp = (regexpArr: RegExp[], path: string) => regexpArr.some((v) => v.test(path));
-
-
-const _isMatch = (pathDef: TConvertedPathDifinitionObject, path: string): boolean =>
-    pathDef.type === 'include' ? matchWithRegexp(pathDef.path, path) : !matchWithRegexp(pathDef.path, path);
-
 
 const toConvertedPathDifinitionObjects = (pathDifinition: TPathDifinition): TConvertedPathDifinitionObject[] => {
   if (isExpressPathDifinition(pathDifinition)) {
@@ -48,13 +48,23 @@ const toConvertedPathDifinitionObjects = (pathDifinition: TPathDifinition): TCon
   }
 };
 
-const isMatch = (pathDifinition: TPathDifinition, path: string): boolean =>
+
+
+// ##### match
+
+const matchWithRegexp = (regexpArr: RegExp[], path: string) => regexpArr.some((v) => v.test(path));
+
+const _isMatch = (pathDef: TConvertedPathDifinitionObject, path: string): boolean =>
+    pathDef.type === 'include' ? matchWithRegexp(pathDef.path, path) : !matchWithRegexp(pathDef.path, path);
+
+export const isMatch = (pathDifinition: TPathDifinition, path: string): boolean =>
   toConvertedPathDifinitionObjects(pathDifinition).every((v) => _isMatch(v, path));
 
 
 // isMatch をこんな風にすると、フレームワークでより使いやすいかな。
-// const createMatcher = (pathDifinition: TPathDifinition): (path: string) => boolean =>
+// export const createMatcher = (pathDifinition: TPathDifinition): (path: string) => boolean =>
 //   (path: string) => toConvertedPathDifinitionObjects(pathDifinition).every((v) => _isMatch(v, path));
+
 
 
 // ####### test
